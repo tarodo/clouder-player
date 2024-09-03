@@ -27,7 +27,6 @@ from enum import StrEnum
 class Command(StrEnum):
     NEXT = "n"
     PREVIOUS = "p"
-    PAUSE = " "
     STOP = "s"
     LIKE = "l"
 
@@ -63,12 +62,14 @@ class SpotifyUI:
         self.current_input = ""
 
         # Interface elements
-        self.frame: Widget | None = None
         self.main_layout: Widget | None = None
-        self.status_text: Widget | None = None
-        self.track_text: Widget | None = None
-        self.artists_text: Widget | None = None
+        self.frame: Widget | None = None
+
         self.playlist_text: Widget | None = None
+        self.artists_text: Widget | None = None
+        self.track_text: Widget | None = None
+        self.menu_text: Widget | None = None
+        self.status_text: Widget | None = None
 
         # Player state
         self._player_state: PlayerState | None = None
@@ -119,11 +120,22 @@ class SpotifyUI:
             ]
         )
 
+        menu_stat = urwid.Text("Menu: ")
+        self.menu_text = urwid.Text("")
+        menu_block = urwid.Columns(
+            [
+                ("pack", urwid.Padding(menu_stat, align="left")),
+                ("pack", urwid.Padding(self.menu_text, align="left")),
+            ]
+        )
+
         self.main_layout = urwid.Pile(
             [
                 playlist_block,
                 artists_block,
                 track_block,
+                urwid.Divider(),
+                menu_block,
                 status_block,
                 urwid.Divider(),
             ]

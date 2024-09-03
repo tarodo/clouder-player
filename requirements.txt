@@ -1,0 +1,5 @@
+environs~=10.3.0
+spotipy~=2.23.0
+
+urwid~=2.6.15
+motor~=3.5.1

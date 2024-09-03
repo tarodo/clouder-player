@@ -1,0 +1,11 @@
+data/
+.venv/
+venv/
+.idea
+__pycache__/
+.env
+.DS_Store
+.cache
+*.log
+
+examples/

@@ -1,14 +1,11 @@
+import asyncio
+import logging
 from dataclasses import dataclass
-from functools import lru_cache
 
 import urwid
-import asyncio
+from environs import Env
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
-from environs import Env
-
-import logging
-
 from urwid import Widget
 
 from mongo_adapter import get_sp_clouder_week_by_pl_id
@@ -75,8 +72,6 @@ class SpotifyUI:
 
         # Player state
         self._player_state: PlayerState | None = None
-        self._current_track: dict | None = None
-        self._current_playlist: dict | None = None
 
         self.create_interface()
 
@@ -85,7 +80,6 @@ class SpotifyUI:
             unhandled_input=self.handle_input,
             event_loop=urwid.AsyncioEventLoop(loop=loop),
         )
-        asyncio.ensure_future(self.update_track())
         asyncio.ensure_future(self.update_player_state())
 
     def create_interface(self):
@@ -137,47 +131,14 @@ class SpotifyUI:
 
         self.frame = urwid.Frame(body=urwid.SolidFill(" "), footer=self.main_layout)
 
-    @property
-    def current_track(self) -> dict | None:
-        current_playback = sp.current_playback()
-
-        if (
-            not current_playback
-            or current_playback.get("currently_playing_type") != "track"
-        ):
-            self._current_track = None
-        else:
-            track_id = current_playback["item"]["id"]
-            if not self._current_track or self._current_track.get("id") != track_id:
-                self._current_track = self.get_track_info(track_id)
-
-        return self._current_track
-
-    @property
-    def current_playlist(self) -> dict | None:
-        current_playback = sp.current_playback()
-
-        if (
-            not current_playback
-            or current_playback["context"].get("type") != "playlist"
-        ):
-            self._current_playlist = None
-        else:
-            playlist_uri = current_playback["context"]["uri"]
-            if (
-                not self._current_playlist
-                or self._current_playlist.get("uri") != playlist_uri
-            ):
-                self._current_playlist = self.get_playlist_info(playlist_uri)
-
-        return self._current_playlist
-
     def clear_player_state(self):
         self._player_state = None
 
     def is_same_track(self, current_playback):
         current_player = self._player_state
-        return current_player and current_player.track_id == current_playback["item"]["id"]
+        return (
+            current_player and current_player.track_id == current_playback["item"]["id"]
+        )
 
     async def get_playlist_data(self, current_playback):
         context_type = current_playback["context"]["type"]
@@ -208,9 +169,13 @@ class SpotifyUI:
         is_clouder = True
         is_base_playlist = clouder_pl.get("clouder_type") == "base"
         extra_playlists = (
-            {pl_info["clouder_name"]: pl_id for pl_id, pl_info in clouder_week.get("sp_playlists").items() if
-             pl_info["clouder_type"] == "extra"}
-            if is_base_playlist else {}
+            {
+                pl_info["clouder_name"]: pl_id
+                for pl_id, pl_info in clouder_week.get("sp_playlists").items()
+                if pl_info["clouder_type"] == "extra"
+            }
+            if is_base_playlist
+            else {}
         )
 
         return {
@@ -220,6 +185,15 @@ class SpotifyUI:
             "is_base_playlist": is_base_playlist,
             "extra_playlists": extra_playlists,
         }
+
+    def update_player_ui(self):
+        player_state = self._player_state
+        if not player_state:
+            return
+        artists = ", ".join(player_state.artists.values())
+        self.track_text.set_text(player_state.track_name or "No track")
+        self.artists_text.set_text(artists or "No artists")
+        self.playlist_text.set_text(player_state.playlist_name or "No playlist")
 
     async def update_player_state(self):
         while True:
@@ -239,50 +213,14 @@ class SpotifyUI:
             self._player_state = PlayerState(
                 track_id=current_playback["item"]["id"],
                 track_name=current_playback["item"]["name"],
-                artists={art["id"]: art["name"] for art in current_playback["item"]["artists"]},
+                artists={
+                    art["id"]: art["name"]
+                    for art in current_playback["item"]["artists"]
+                },
                 **playlist_data,
             )
+            self.update_player_ui()
             logger.info(f"Player state updated: {self._player_state}")
-
-    async def update_track(self):
-        while True:
-            track_info = await self.get_current_track_info()
-            logger.info(f"Track info: {track_info}")
-            self.track_text.set_text(track_info.get("track", "No track"))
-            self.artists_text.set_text(track_info.get("artists", "No track"))
-            self.playlist_text.set_text(track_info.get("playlist", "No track"))
-            await asyncio.sleep(5)
-
-    @lru_cache(maxsize=100)
-    def get_track_info(self, track_id: str) -> dict:
-        track = sp.track(track_id)
-        track_name = track["name"]
-        artists = ", ".join([artist["name"] for artist in track["artists"]])
-        track_info = {"id": track_id, "name": track_name, "artists": artists}
-        return track_info
-
-    @lru_cache(maxsize=10)
-    def get_playlist_info(self, playlist_uri: str) -> str:
-        playlist = sp.playlist(playlist_uri)
-        return playlist
-
-    async def get_current_track_info(self):
-        state = {
-            "track": "No Track",
-            "artists": "No Artists",
-            "playlist": "No playlist",
-        }
-
-        track_info = self.current_track
-        if track_info:
-            state.update(
-                {"track": track_info["name"], "artists": track_info["artists"]}
-            )
-
-        if playlist_info := self.current_playlist:
-            state.update({"playlist": playlist_info["name"]})
-
-        return state
 
     def handle_input(self, key):
         if len(key) == 1:

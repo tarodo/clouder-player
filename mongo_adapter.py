@@ -1,4 +1,5 @@
-from urllib.parse import urlunparse, urlparse, quote
+from urllib.parse import quote, urlparse, urlunparse
+
 from environs import Env, EnvError
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
@@ -37,6 +38,6 @@ async def get_sp_clouder_week_by_pl_id(sp_pl_id: str) -> dict:
     """Get clouder weeks from MongoDB."""
     db = await get_mongo_conn()
 
-    return await db.clouder_weeks.find_one({
-        f"sp_playlists.{sp_pl_id}": {"$exists": True}
-    })
+    return await db.clouder_weeks.find_one(
+        {f"sp_playlists.{sp_pl_id}": {"$exists": True}}
+    )

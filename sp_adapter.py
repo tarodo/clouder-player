@@ -11,7 +11,7 @@ if not os.getenv("SPOTIPY_CLIENT_ID"):
 
 
 def create_sp():
-    scope = "user-read-playback-state user-modify-playback-state user-read-currently-playing"
+    scope = "user-read-playback-state user-modify-playback-state user-read-currently-playing user-library-modify"
     return Spotify(
         auth_manager=SpotifyOAuth(scope=scope, open_browser=False, show_dialog=True)
     )
@@ -24,3 +24,6 @@ def get_current_track():
     res["item"].pop("available_markets", None)
 
     return res
+
+
+get_current_track()

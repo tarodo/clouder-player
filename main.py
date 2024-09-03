@@ -24,10 +24,12 @@ logger.propagate = False
 from enum import StrEnum
 
 
-class Command(StrEnum):
-    NEXT = "n"
-    PREVIOUS = "p"
-    STOP = "s"
+class PlayerCommand(StrEnum):
+    NEXT = ">"
+    PREVIOUS = "<"
+    MOVE_10s = '.'
+    BACK_10s = ','
+    STOP = " "
     LIKE = "l"
 
 
@@ -36,13 +38,10 @@ env.read_env()
 
 
 def create_sp():
-    scope = "user-read-playback-state user-modify-playback-state user-read-currently-playing"
+    scope = "user-read-playback-state user-modify-playback-state user-read-currently-playing user-library-modify"
     return Spotify(
         auth_manager=SpotifyOAuth(scope=scope, open_browser=False, show_dialog=True)
     )
-
-
-sp = create_sp()
 
 
 @dataclass
@@ -59,7 +58,9 @@ class PlayerState:
 
 class SpotifyUI:
     def __init__(self, loop):
-        self.current_input = ""
+        self._base_menu_options = [command.value for command in PlayerCommand]
+        self._extra_menu_options = None
+        self.sp = create_sp()
 
         # Interface elements
         self.main_layout: Widget | None = None
@@ -198,6 +199,12 @@ class SpotifyUI:
             "extra_playlists": extra_playlists,
         }
 
+    def update_extra_menu(self):
+        if not self._player_state:
+            return
+        self._extra_menu_options = [opt[:1].lower() for opt in self._player_state.extra_playlists.keys()]
+        self.loop_widget.draw_screen()
+
     def update_player_ui(self):
         player_state = self._player_state
         if not player_state:
@@ -206,13 +213,15 @@ class SpotifyUI:
         self.track_text.set_text(player_state.track_name or "No track")
         self.artists_text.set_text(artists or "No artists")
         self.playlist_text.set_text(player_state.playlist_name or "No playlist")
+        self.menu_text.set_text(f"{', '.join(opt.capitalize() for opt in self._player_state.extra_playlists.keys())}")
+        self.loop_widget.draw_screen()
 
     async def update_player_state(self):
         while True:
-            await asyncio.sleep(5)
+            await asyncio.sleep(3)
             logger.info(f"Player state start: {self._player_state}")
 
-            current_playback = sp.current_playback()
+            current_playback = self.sp.current_playback()
             if not current_playback:
                 self.clear_player_state()
                 continue
@@ -234,10 +243,43 @@ class SpotifyUI:
             self.update_player_ui()
             logger.info(f"Player state updated: {self._player_state}")
 
+    def handle_menu(self, command: PlayerCommand):
+        if command == PlayerCommand.NEXT:
+            self.status_text.set_text("Next track")
+            self.sp.next_track()
+        elif command == PlayerCommand.PREVIOUS:
+            self.status_text.set_text("Previous track")
+            self.sp.previous_track()
+        elif command == PlayerCommand.MOVE_10s:
+            self.status_text.set_text("Move 10 seconds")
+            sp_play = self.sp.current_playback()
+            if sp_play and "progress_ms" in sp_play:
+                cur_pos = sp_play["progress_ms"]
+                new_position = cur_pos + 10000
+                track_duration = sp_play["item"]["duration_ms"]
+                new_position = min(new_position, track_duration) - 1
+                self.sp.seek_track(new_position)
+        elif command == PlayerCommand.BACK_10s:
+            self.status_text.set_text("Back 10 seconds")
+            sp_play = self.sp.current_playback()
+            if sp_play and "progress_ms" in sp_play:
+                cur_pos = sp_play["progress_ms"]
+                new_position = cur_pos - 10000
+                new_position = max(new_position, 0)
+                self.sp.seek_track(new_position)
+        elif command == PlayerCommand.STOP:
+            self.status_text.set_text("Pause track")
+            self.sp.pause_playback()
+        elif command == PlayerCommand.LIKE:
+            self.status_text.set_text("Like track")
+            track_id = self._player_state.track_id
+            if track_id:
+                self.sp.current_user_saved_tracks_add([track_id])
+
     def handle_input(self, key):
-        if len(key) == 1:
-            self.status_text.set_text(f"{key} pressed")
-            self.current_input += key
+        if key in self._base_menu_options:
+            self.handle_menu(PlayerCommand(key))
+            return
 
     def run(self):
         self.loop_widget.run()

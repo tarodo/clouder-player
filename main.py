@@ -203,6 +203,7 @@ class SpotifyUI:
         if not self._player_state:
             return
         self._extra_menu_options = [opt[:1].lower() for opt in self._player_state.extra_playlists.keys()]
+        logger.info(f"Extra menu options: {self._extra_menu_options}")
         self.loop_widget.draw_screen()
 
     def update_player_ui(self):
@@ -240,10 +241,12 @@ class SpotifyUI:
                 },
                 **playlist_data,
             )
+            self.update_extra_menu()
             self.update_player_ui()
+
             logger.info(f"Player state updated: {self._player_state}")
 
-    def handle_menu(self, command: PlayerCommand):
+    def handle_base_menu(self, command: PlayerCommand):
         if command == PlayerCommand.NEXT:
             self.status_text.set_text("Next track")
             self.sp.next_track()
@@ -278,8 +281,14 @@ class SpotifyUI:
 
     def handle_input(self, key):
         if key in self._base_menu_options:
-            self.handle_menu(PlayerCommand(key))
-            return
+            self.handle_base_menu(PlayerCommand(key))
+
+        if self._extra_menu_options and key in self._extra_menu_options:
+            for pl_name in self._player_state.extra_playlists.keys():
+                if key == pl_name[:1].lower():
+                    pl_id = self._player_state.extra_playlists[pl_name]
+                    self.status_text.set_text(f"Move to {pl_name} playlist :: {pl_id}")
+                    break
 
     def run(self):
         self.loop_widget.run()

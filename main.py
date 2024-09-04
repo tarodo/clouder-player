@@ -54,6 +54,7 @@ class PlayerState:
     is_clouder: bool | None = None
     is_base_playlist: bool | None = None
     extra_playlists: dict[str, str] | None = None
+    trash_playlist_id: int | None = None
 
 
 class SpotifyUI:
@@ -72,7 +73,6 @@ class SpotifyUI:
         self.menu_text: Widget | None = None
         self.status_text: Widget | None = None
 
-        # Player state
         self._player_state: PlayerState | None = None
 
         self.create_interface()
@@ -168,6 +168,7 @@ class SpotifyUI:
                 "is_clouder": current_player.is_clouder,
                 "is_base_playlist": current_player.is_base_playlist,
                 "extra_playlists": current_player.extra_playlists,
+                "trash_playlist_id": current_player.trash_playlist_id,
             }
 
         clouder_week = await get_sp_clouder_week_by_pl_id(playlist_id)
@@ -191,16 +192,22 @@ class SpotifyUI:
             else {}
         )
 
+        trash_playlist_id = None
+        for pl_id, pl_info in clouder_week.get("sp_playlists").items():
+            if pl_info["clouder_name"] == "trash":
+                trash_playlist_id = pl_id
+
         return {
             "playlist_id": playlist_id,
             "playlist_name": playlist_name,
             "is_clouder": is_clouder,
             "is_base_playlist": is_base_playlist,
             "extra_playlists": extra_playlists,
+            "trash_playlist_id": trash_playlist_id,
         }
 
     def update_extra_menu(self):
-        if not self._player_state:
+        if not self._player_state or not self._player_state.extra_playlists:
             return
         self._extra_menu_options = [opt[:1].lower() for opt in self._player_state.extra_playlists.keys()]
         logger.info(f"Extra menu options: {self._extra_menu_options}")
@@ -214,7 +221,8 @@ class SpotifyUI:
         self.track_text.set_text(player_state.track_name or "No track")
         self.artists_text.set_text(artists or "No artists")
         self.playlist_text.set_text(player_state.playlist_name or "No playlist")
-        self.menu_text.set_text(f"{', '.join(opt.capitalize() for opt in self._player_state.extra_playlists.keys())}")
+        menu_text = ', '.join(opt.capitalize() for opt in self._player_state.extra_playlists.keys()) if self._player_state.extra_playlists else ""
+        self.menu_text.set_text(menu_text)
         self.loop_widget.draw_screen()
 
     async def update_player_state(self):

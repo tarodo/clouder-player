@@ -27,10 +27,11 @@ from enum import StrEnum
 class PlayerCommand(StrEnum):
     NEXT = ">"
     PREVIOUS = "<"
-    MOVE_10s = '.'
-    BACK_10s = ','
+    MOVE_10s = "."
+    BACK_10s = ","
     STOP = " "
     LIKE = "l"
+
 
 TRACK_POINTS = 5
 
@@ -212,7 +213,9 @@ class SpotifyUI:
     def update_extra_menu(self):
         if not self._player_state or not self._player_state.extra_playlists:
             return
-        self._extra_menu_options = [opt[:1].lower() for opt in self._player_state.extra_playlists.keys()]
+        self._extra_menu_options = [
+            opt[:1].lower() for opt in self._player_state.extra_playlists.keys()
+        ]
         logger.info(f"Extra menu options: {self._extra_menu_options}")
         self.loop_widget.draw_screen()
 
@@ -224,7 +227,13 @@ class SpotifyUI:
         self.track_text.set_text(player_state.track_name or "No track")
         self.artists_text.set_text(artists or "No artists")
         self.playlist_text.set_text(player_state.playlist_name or "No playlist")
-        menu_text = ', '.join(opt.capitalize() for opt in self._player_state.extra_playlists.keys()) if self._player_state.extra_playlists else ""
+        menu_text = (
+            ", ".join(
+                opt.capitalize() for opt in self._player_state.extra_playlists.keys()
+            )
+            if self._player_state.extra_playlists
+            else ""
+        )
         self.menu_text.set_text(menu_text)
         self.loop_widget.draw_screen()
 
@@ -262,19 +271,41 @@ class SpotifyUI:
         duration = self._player_state.duration_ms
         return int((point - 1) * duration / total)
 
+    def handle_next_track(self):
+        self.status_text.set_text("Next track")
+        if (
+            self._player_state.is_base_playlist
+            and self._player_state.playlist_id != self._player_state.trash_playlist_id
+        ):
+            self.sp.playlist_add_items(
+                self._player_state.trash_playlist_id, [self._player_state.track_id]
+            )
+            self.sp.playlist_remove_all_occurrences_of_items(
+                self._player_state.playlist_id, [self._player_state.track_id]
+            )
+        self.sp.next_track()
+
+    def handle_stop(self):
+        cur_state = self.sp.current_playback()
+        if cur_state:
+            if cur_state["is_playing"]:
+                self.status_text.set_text("Stop track")
+                self.sp.pause_playback()
+            else:
+                self.status_text.set_text("Resume track")
+                self.sp.start_playback()
+
     def handle_base_menu(self, command: PlayerCommand):
         if command == PlayerCommand.NEXT:
-            self.status_text.set_text("Next track")
-            if self._player_state.is_base_playlist and self._player_state.playlist_id != self._player_state.trash_playlist_id:
-                self.sp.playlist_add_items(self._player_state.trash_playlist_id, [self._player_state.track_id])
-                self.sp.playlist_remove_all_occurrences_of_items(self._player_state.playlist_id, [self._player_state.track_id])
-            self.sp.next_track()
+            self.handle_next_track()
+
         elif command == PlayerCommand.PREVIOUS:
             self.status_text.set_text("Previous track")
             try:
                 self.sp.previous_track()
             except Exception as e:
                 self.handle_points_menu(1)
+
         elif command == PlayerCommand.MOVE_10s:
             self.status_text.set_text("Move 10 seconds")
             sp_play = self.sp.current_playback()
@@ -284,6 +315,7 @@ class SpotifyUI:
                 track_duration = sp_play["item"]["duration_ms"]
                 new_position = min(new_position, track_duration) - 1
                 self.sp.seek_track(new_position)
+
         elif command == PlayerCommand.BACK_10s:
             self.status_text.set_text("Back 10 seconds")
             sp_play = self.sp.current_playback()
@@ -293,8 +325,8 @@ class SpotifyUI:
                 new_position = max(new_position, 0)
                 self.sp.seek_track(new_position)
         elif command == PlayerCommand.STOP:
-            self.status_text.set_text("Pause track")
-            self.sp.pause_playback()
+            self.handle_stop()
+
         elif command == PlayerCommand.LIKE:
             self.status_text.set_text("Like track")
             track_id = self._player_state.track_id

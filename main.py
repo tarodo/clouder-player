@@ -32,13 +32,14 @@ class PlayerCommand(StrEnum):
     STOP = " "
     LIKE = "l"
 
+TRACK_POINTS = 5
 
 env = Env()
 env.read_env()
 
 
-def create_sp():
-    scope = "user-read-playback-state user-modify-playback-state user-read-currently-playing user-library-modify"
+def create_sp() -> Spotify:
+    scope = "user-read-playback-state user-modify-playback-state user-read-currently-playing user-library-modify playlist-modify-private"
     return Spotify(
         auth_manager=SpotifyOAuth(scope=scope, open_browser=False, show_dialog=True)
     )
@@ -49,6 +50,7 @@ class PlayerState:
     track_id: int
     track_name: str
     artists: dict[str, str]
+    duration_ms: int
     playlist_id: int | None = None
     playlist_name: str | None = None
     is_clouder: bool | None = None
@@ -60,6 +62,7 @@ class PlayerState:
 class SpotifyUI:
     def __init__(self, loop):
         self._base_menu_options = [command.value for command in PlayerCommand]
+        self._points_menu_options = [str(i) for i in range(1, TRACK_POINTS + 1)]
         self._extra_menu_options = None
         self.sp = create_sp()
 
@@ -243,6 +246,7 @@ class SpotifyUI:
             self._player_state = PlayerState(
                 track_id=current_playback["item"]["id"],
                 track_name=current_playback["item"]["name"],
+                duration_ms=current_playback["item"]["duration_ms"],
                 artists={
                     art["id"]: art["name"]
                     for art in current_playback["item"]["artists"]
@@ -254,9 +258,20 @@ class SpotifyUI:
 
             logger.info(f"Player state updated: {self._player_state}")
 
+    def move_track_to_processed(self):
+        current_track_id = self.sp.current_playback()["item"]["id"]
+        self.sp.playlist_add_items(
+            self._player_state.trash_playlist_id, [current_track_id]
+        )
+
+    def calculate_position(self, point: int, total: int = 5) -> int:
+        duration = self._player_state.duration_ms
+        return int((point - 1) * duration / total)
+
     def handle_base_menu(self, command: PlayerCommand):
         if command == PlayerCommand.NEXT:
             self.status_text.set_text("Next track")
+            self.move_track_to_processed()
             self.sp.next_track()
         elif command == PlayerCommand.PREVIOUS:
             self.status_text.set_text("Previous track")
@@ -287,9 +302,17 @@ class SpotifyUI:
             if track_id:
                 self.sp.current_user_saved_tracks_add([track_id])
 
+    def handle_points_menu(self, point: int):
+        self.status_text.set_text(f"Move to {point} point")
+        new_position = self.calculate_position(point)
+        self.sp.seek_track(new_position)
+
     def handle_input(self, key):
         if key in self._base_menu_options:
             self.handle_base_menu(PlayerCommand(key))
+
+        if key in self._points_menu_options:
+            self.handle_points_menu(int(key))
 
         if self._extra_menu_options and key in self._extra_menu_options:
             for pl_name in self._player_state.extra_playlists.keys():

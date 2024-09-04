@@ -239,7 +239,7 @@ class SpotifyUI:
 
     async def update_player_state(self):
         while True:
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
             logger.info(f"Player state start: {self._player_state}")
 
             current_playback = self.sp.current_playback()
@@ -271,8 +271,9 @@ class SpotifyUI:
         duration = self._player_state.duration_ms
         return int((point - 1) * duration / total)
 
-    def handle_next_track(self):
-        self.status_text.set_text("Next track")
+    def handle_next_track(self, need_info: bool = True):
+        if need_info:
+            self.status_text.set_text("Next track")
         if (
             self._player_state.is_base_playlist
             and self._player_state.playlist_id != self._player_state.trash_playlist_id
@@ -349,6 +350,8 @@ class SpotifyUI:
             for pl_name in self._player_state.extra_playlists.keys():
                 if key == pl_name[:1].lower():
                     pl_id = self._player_state.extra_playlists[pl_name]
+                    self.sp.playlist_add_items(pl_id, [self._player_state.track_id])
+                    self.handle_next_track(need_info=False)
                     self.status_text.set_text(f"Move to {pl_name} playlist :: {pl_id}")
                     break
 

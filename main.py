@@ -258,12 +258,6 @@ class SpotifyUI:
 
             logger.info(f"Player state updated: {self._player_state}")
 
-    def move_track_to_processed(self):
-        current_track_id = self.sp.current_playback()["item"]["id"]
-        self.sp.playlist_add_items(
-            self._player_state.trash_playlist_id, [current_track_id]
-        )
-
     def calculate_position(self, point: int, total: int = 5) -> int:
         duration = self._player_state.duration_ms
         return int((point - 1) * duration / total)
@@ -271,11 +265,16 @@ class SpotifyUI:
     def handle_base_menu(self, command: PlayerCommand):
         if command == PlayerCommand.NEXT:
             self.status_text.set_text("Next track")
-            self.move_track_to_processed()
+            if self._player_state.is_base_playlist and self._player_state.playlist_id != self._player_state.trash_playlist_id:
+                self.sp.playlist_add_items(self._player_state.trash_playlist_id, [self._player_state.track_id])
+                self.sp.playlist_remove_all_occurrences_of_items(self._player_state.playlist_id, [self._player_state.track_id])
             self.sp.next_track()
         elif command == PlayerCommand.PREVIOUS:
             self.status_text.set_text("Previous track")
-            self.sp.previous_track()
+            try:
+                self.sp.previous_track()
+            except Exception as e:
+                self.handle_points_menu(1)
         elif command == PlayerCommand.MOVE_10s:
             self.status_text.set_text("Move 10 seconds")
             sp_play = self.sp.current_playback()

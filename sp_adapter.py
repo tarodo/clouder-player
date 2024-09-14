@@ -26,4 +26,17 @@ def get_current_track():
     return res
 
 
+def get_artist_info(artist_id: str):
+    sp = create_sp()
+    artist_info = sp.artist(artist_id)
+    clouder_artist = {
+        "id": artist_info["id"],
+        "name": artist_info["name"],
+        "genres": artist_info["genres"],
+        "popularity": artist_info["popularity"],
+        "followers": artist_info["followers"]["total"],
+    }
+    return clouder_artist
+
+
 get_current_track()

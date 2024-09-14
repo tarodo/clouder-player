@@ -9,6 +9,7 @@ from spotipy.oauth2 import SpotifyOAuth
 from urwid import Widget
 
 from mongo_adapter import get_sp_clouder_week_by_pl_id
+from sp_adapter import get_artist_info
 
 logger = logging.getLogger("sp")
 logger.setLevel(logging.INFO)
@@ -219,11 +220,20 @@ class SpotifyUI:
         logger.info(f"Extra menu options: {self._extra_menu_options}")
         self.loop_widget.draw_screen()
 
+    @staticmethod
+    def collect_artists_info(artists: dict[str, str]) -> str:
+        result = []
+        for artist_id in artists.keys():
+            artist_info = get_artist_info(artist_id)
+            if artist_info:
+                result.append(f"{artist_info['name']}({artist_info['followers']}/{artist_info['popularity']})")
+        return ", ".join(result)
+
     def update_player_ui(self):
         player_state = self._player_state
         if not player_state:
             return
-        artists = ", ".join(player_state.artists.values())
+        artists = self.collect_artists_info(player_state.artists)
         self.track_text.set_text(player_state.track_name or "No track")
         self.artists_text.set_text(artists or "No artists")
         self.playlist_text.set_text(player_state.playlist_name or "No playlist")

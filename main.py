@@ -51,6 +51,7 @@ def create_sp() -> Spotify:
 class PlayerState:
     track_id: int
     track_name: str
+    track_popularity: int
     artists: dict[str, str]
     duration_ms: int
     playlist_id: int | None = None
@@ -229,12 +230,18 @@ class SpotifyUI:
                 result.append(f"{artist_info['name']}({artist_info['followers']}/{artist_info['popularity']})")
         return ", ".join(result)
 
+    @staticmethod
+    def collect_track_info(state: PlayerState) -> str:
+        return f"{state.track_name}({state.track_popularity})"
+
     def update_player_ui(self):
         player_state = self._player_state
         if not player_state:
             return
         artists = self.collect_artists_info(player_state.artists)
-        self.track_text.set_text(player_state.track_name or "No track")
+        track_info = self.collect_track_info(player_state)
+
+        self.track_text.set_text(track_info or "No track")
         self.artists_text.set_text(artists or "No artists")
         self.playlist_text.set_text(player_state.playlist_name or "No playlist")
         menu_text = (
@@ -265,6 +272,7 @@ class SpotifyUI:
             self._player_state = PlayerState(
                 track_id=current_playback["item"]["id"],
                 track_name=current_playback["item"]["name"],
+                track_popularity=current_playback["item"]["popularity"],
                 duration_ms=current_playback["item"]["duration_ms"],
                 artists={
                     art["id"]: art["name"]

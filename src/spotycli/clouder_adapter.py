@@ -35,6 +35,7 @@ class PlayerState:
     name: str
     track_repr: str
     id: str
+    release_date: str
     artists: list[Artist]
     artists_repr: str
     popularity: int
@@ -121,7 +122,7 @@ def get_current_state(sp_track) -> PlayerState:
         [f"{art.name} ({art.followers}:{art.popularity})" for art in artists]
     )
     track_points = get_track_points(sp_track["item"]["duration_ms"])
-    track_repr = f"{sp_track['item']['name']}({sp_track['item']['popularity']})"
+    track_repr = f"{sp_track['item']['name']} ({sp_track['item']['popularity']})"
 
     sp_pl_uri = sp_track.get("context", {}).get("uri", "")
 
@@ -144,6 +145,7 @@ def get_current_state(sp_track) -> PlayerState:
         name=sp_track["item"]["name"],
         track_repr=track_repr,
         id=sp_track["item"]["id"],
+        release_date=sp_track["item"]["album"]["release_date"],
         artists=artists,
         artists_repr=artists_repr,
         popularity=sp_track["item"]["popularity"],

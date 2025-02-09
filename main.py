@@ -46,9 +46,10 @@ class SpotifyService:
 
     def current_playback(self) -> dict[str, Any] | None:
         res = self.sp.current_playback()
-        res["item"]["album"].pop("available_markets", None)
-        res["item"].pop("available_markets", None)
-        return res
+        if res:
+            res["item"]["album"].pop("available_markets", None)
+            res["item"].pop("available_markets", None)
+            return res
 
     def next_track(self) -> None:
         self.sp.next_track()
@@ -127,11 +128,18 @@ class SpotifyController:
         new_position = self.state.track_points[point - 1]
         self.service.seek_track(new_position)
 
-    def handle_cat_menu(self, key: str) -> None:
+    def handle_cat_menu(self, key: str, amplified: bool = False) -> None:
         pl_name, pl_id = self.state.cat_menu[key]
         self.service.add_to_playlist(pl_id, self.state.id)
+        status_msg = f"Move to {pl_name.capitalize()}"
+        if amplified:
+            clouder_pl = self.state.playlist
+            if clouder_pl:
+                prep_pl_id = clouder_pl.prep_playlists[pl_name]
+                self.service.add_to_playlist(prep_pl_id, self.state.id)
+                status_msg += " (amplified)"
         self.handle_next_track()
-        self.status_message = f"Move to {pl_name} playlist :: {pl_id}"
+        self.status_message = status_msg
 
     def handle_like_track(self) -> None:
         self.status_message = "Like track"
@@ -197,6 +205,11 @@ class SpotifyUI:
             [("pack", urwid.Text("Playlist: ")), self.playlist_text]
         )
 
+        self.release_date_text = urwid.Text("Date will be displayed here")
+        release_date_block = urwid.Columns(
+            [("pack", urwid.Text("Release Date: ")), self.release_date_text]
+        )
+
         self.artists_text = urwid.Text("Current artists will be displayed here")
         artists_block = urwid.Columns(
             [("pack", urwid.Text("Artists: ")), self.artists_text]
@@ -216,6 +229,7 @@ class SpotifyUI:
         self.main_layout = urwid.Pile(
             [
                 playlist_block,
+                release_date_block,
                 artists_block,
                 track_block,
                 urwid.Divider(),
@@ -229,6 +243,7 @@ class SpotifyUI:
     def update_ui(self) -> None:
         state = self.controller.state
         if state:
+            self.release_date_text.set_text(state.release_date or "No date")
             self.artists_text.set_text(state.artists_repr or "No artists")
             self.track_text.set_text(state.track_repr or "No track")
             pl_text = "No playlist"
@@ -237,6 +252,7 @@ class SpotifyUI:
             self.playlist_text.set_text(pl_text)
             self.menu_text.set_text(state.cat_menu_repr)
         else:
+            self.release_date_text.set_text("No date")
             self.playlist_text.set_text("No playlist")
             self.artists_text.set_text("No artists")
             self.track_text.set_text("No track")
@@ -250,13 +266,16 @@ class SpotifyUI:
         points_options = [
             str(i) for i in range(1, len(self.controller.state.track_points) + 1)
         ]
-
         if key in base_options:
             self.controller.handle_base_menu(PlayerCommand(key))
         elif key in points_options:
             self.controller.handle_points_menu(int(key))
-        elif self.controller.state.cat_menu and key in self.controller.state.cat_menu:
-            self.controller.handle_cat_menu(key)
+        elif self.controller.state.cat_menu:
+            if isinstance(key, str):
+                if key in self.controller.state.cat_menu:
+                    self.controller.handle_cat_menu(key)
+                elif key.lower() in self.controller.state.cat_menu:
+                    self.controller.handle_cat_menu(key.lower(), amplified=True)
 
         self.update_ui()
 

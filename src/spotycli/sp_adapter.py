@@ -3,8 +3,10 @@ from spotipy.oauth2 import SpotifyOAuth
 
 
 def create_sp():
-    scope = ("user-read-playback-state user-modify-playback-state "
-             "user-read-currently-playing user-library-modify playlist-modify-private")
+    scope = (
+        "user-read-playback-state user-modify-playback-state "
+        "user-read-currently-playing user-library-modify playlist-modify-private"
+    )
     return Spotify(
         auth_manager=SpotifyOAuth(scope=scope, open_browser=False, show_dialog=True)
     )

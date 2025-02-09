@@ -1,0 +1,31 @@
+[project]
+name = "clouder_spotycli"
+version = "0.1.0"
+readme = "README.md"
+requires-python = ">=3.13"
+
+dependencies = [
+    "urwid~=2.6.16",
+    "pymongo~=4.11",
+    "spotipy~=2.25.0",
+    "pydantic_settings~=2.7.1"
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff~=0.9.5",
+    "python-dotenv~=1.0.1"
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+extend-select = ["E", "F", "I", "UP", "B", "W", "N", "C90"]
+fixable = ["ALL"]
+unfixable = []
+
+[tool.setuptools]
+packages = ["spotycli"]
+package-dir = {"" = "src"}

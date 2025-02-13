@@ -80,6 +80,9 @@ class SpotifyService:
     def like_track(self, track_id: str) -> None:
         self.sp.current_user_saved_tracks_add([track_id])
 
+    def get_playlist_count(self, playlist_id: str) -> int:
+        return self.sp.playlist_items(playlist_id)["total"]
+
 
 class SpotifyController:
     def __init__(self, service: SpotifyService) -> None:
@@ -215,8 +218,10 @@ class SpotifyUI:
 
     def _build_interface(self) -> None:
         self.playlist_text = urwid.Text("Current playlist will be displayed here")
+        self.playlist_count = urwid.Text("(0)", align="left")
+        playlist_count_padded = urwid.Padding(self.playlist_count, align="left", left=1)
         playlist_block = urwid.Columns(
-            [("pack", urwid.Text("Playlist: ")), self.playlist_text]
+            [("pack", urwid.Text("Playlist: ")), ("pack", self.playlist_text), ("pack", playlist_count_padded)]
         )
 
         self.release_date_text = urwid.Text("Date will be displayed here")

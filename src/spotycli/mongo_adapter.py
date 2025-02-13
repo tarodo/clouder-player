@@ -19,7 +19,7 @@ def get_mongo_conn() -> Database:
         raise
 
     try:
-        client.admin.command("ping")
+        # client.admin.command("ping")
         return client[mongo_db]
     except Exception as e:
         logger.error(f"Failed to check the MongoDB database. :: {e}")

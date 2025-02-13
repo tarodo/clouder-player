@@ -99,8 +99,8 @@ class SpotifyController:
             update_ui_callback()
             return
 
-        if self.state and self.state.id == current_playback["item"]["id"]:
-            return
+        # if self.state and self.state.id == current_playback["item"]["id"]:
+        #     return
 
         self.state = get_current_state(current_playback)
         update_ui_callback()
@@ -205,6 +205,10 @@ class SpotifyUI:
         self._build_interface()
         self.main_loop = urwid.MainLoop(
             self.frame,
+            palette=[
+                ('normal', 'default', 'default'),
+                ('complete', 'default', 'dark blue'),
+            ],
             unhandled_input=self.handle_input,
             event_loop=urwid.AsyncioEventLoop(loop=loop),
         )
@@ -236,6 +240,22 @@ class SpotifyUI:
             [("pack", urwid.Text("Status: ")), self.status_text]
         )
 
+        class CustomProgressBar(urwid.ProgressBar):
+            def __init__(self, normal, complete, current=0, done=100, text=""):
+                super().__init__(normal, complete, current, done)
+                self.custom_text = text
+
+            def get_text(self):
+                return self.custom_text
+
+            def set_text(self, new_text):
+                self.custom_text = new_text
+
+        self.progress = CustomProgressBar('normal', 'complete', current=0, done=100, text="0:00/0:00")
+        progress_block = urwid.Columns([
+            ("fixed", 50, self.progress)
+        ])
+
         self.main_layout = urwid.Pile(
             [
                 playlist_block,
@@ -246,6 +266,7 @@ class SpotifyUI:
                 menu_block,
                 status_block,
                 urwid.Divider(),
+                progress_block
             ]
         )
         self.frame = urwid.Frame(body=urwid.SolidFill(" "), footer=self.main_layout)
@@ -261,6 +282,8 @@ class SpotifyUI:
                 pl_text = state.playlist.name
             self.playlist_text.set_text(pl_text)
             self.menu_text.set_text(state.cat_menu_repr)
+            self.progress.set_text(state.progress_repr)
+            self.progress.current = state.progress_percent
         else:
             self.release_date_text.set_text("No date")
             self.playlist_text.set_text("No playlist")

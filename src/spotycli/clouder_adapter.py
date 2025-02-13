@@ -35,6 +35,8 @@ class PlayerState:
     name: str
     track_repr: str
     id: str
+    progress_percent: int
+    progress_repr: str
     release_date: str
     artists: list[Artist]
     artists_repr: str
@@ -141,10 +143,21 @@ def get_current_state(sp_track) -> PlayerState:
         prep_pl = prep_playlists[clouder_info["style"]]
         cur_playlist.prep_playlists = prep_pl
 
+    def cast_ms_to_str(ms: int):
+        minutes = str(ms // 1000 // 60).zfill(2)
+        seconds = str(ms // 1000 % 60).zfill(2)
+        return f"{minutes}:{seconds}"
+
+    duration_ms = sp_track["item"]["duration_ms"]
+    progress_ms = sp_track["progress_ms"]
+    progress_repr = f"{cast_ms_to_str(progress_ms)}/{cast_ms_to_str(duration_ms)}"
+    progress_percent = int(progress_ms / duration_ms * 100)
     return PlayerState(
         name=sp_track["item"]["name"],
         track_repr=track_repr,
         id=sp_track["item"]["id"],
+        progress_percent=progress_percent,
+        progress_repr=progress_repr,
         release_date=sp_track["item"]["album"]["release_date"],
         artists=artists,
         artists_repr=artists_repr,

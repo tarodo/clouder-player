@@ -108,6 +108,12 @@ class SpotifyController:
         self.state = get_current_state(current_playback)
         update_ui_callback()
 
+    def update_playlist_count(self) -> None:
+        if self.state and self.state.playlist:
+            self.state.playlist.count = self.service.get_playlist_count(
+                self.state.playlist.id
+            )
+
     def handle_next_track(self) -> None:
         self.status_message = "Next track"
         if (
@@ -119,6 +125,7 @@ class SpotifyController:
                 self.state.playlist.base_playlists["trash"], self.state.id
             )
             self.service.remove_from_playlist(self.state.playlist.id, self.state.id)
+        self.update_playlist_count()
         self.service.next_track()
 
     def handle_stop(self) -> None:
@@ -209,8 +216,8 @@ class SpotifyUI:
         self.main_loop = urwid.MainLoop(
             self.frame,
             palette=[
-                ('normal', 'default', 'default'),
-                ('complete', 'default', 'dark blue'),
+                ("normal", "default", "default"),
+                ("complete", "default", "dark gray"),
             ],
             unhandled_input=self.handle_input,
             event_loop=urwid.AsyncioEventLoop(loop=loop),
@@ -221,7 +228,11 @@ class SpotifyUI:
         self.playlist_count = urwid.Text("(0)", align="left")
         playlist_count_padded = urwid.Padding(self.playlist_count, align="left", left=1)
         playlist_block = urwid.Columns(
-            [("pack", urwid.Text("Playlist: ")), ("pack", self.playlist_text), ("pack", playlist_count_padded)]
+            [
+                ("pack", urwid.Text("Playlist: ")),
+                ("pack", self.playlist_text),
+                ("pack", playlist_count_padded),
+            ]
         )
 
         self.release_date_text = urwid.Text("Date will be displayed here")
@@ -256,10 +267,10 @@ class SpotifyUI:
             def set_text(self, new_text):
                 self.custom_text = new_text
 
-        self.progress = CustomProgressBar('normal', 'complete', current=0, done=100, text="0:00/0:00")
-        progress_block = urwid.Columns([
-            ("fixed", 50, self.progress)
-        ])
+        self.progress = CustomProgressBar(
+            "normal", "complete", current=0, done=100, text="0:00/0:00"
+        )
+        progress_block = urwid.Columns([("fixed", 50, self.progress)])
 
         self.main_layout = urwid.Pile(
             [
@@ -271,7 +282,7 @@ class SpotifyUI:
                 menu_block,
                 status_block,
                 urwid.Divider(),
-                progress_block
+                progress_block,
             ]
         )
         self.frame = urwid.Frame(body=urwid.SolidFill(" "), footer=self.main_layout)
@@ -283,9 +294,12 @@ class SpotifyUI:
             self.artists_text.set_text(state.artists_repr or "No artists")
             self.track_text.set_text(state.track_repr or "No track")
             pl_text = "No playlist"
+            pl_count = 0
             if state.playlist:
                 pl_text = state.playlist.name
+                pl_count = state.playlist.count
             self.playlist_text.set_text(pl_text)
+            self.playlist_count.set_text(f"({pl_count})")
             self.menu_text.set_text(state.cat_menu_repr)
             self.progress.set_text(state.progress_repr)
             self.progress.current = state.progress_percent

@@ -21,6 +21,7 @@ class Artist:
 class ClouderPlaylist:
     name: str
     id: str
+    count: int
     is_base_pl: bool
     clouder_week: str
     clouder_pl_type: str
@@ -104,6 +105,7 @@ def get_playlist(playlist_uri: str) -> ClouderPlaylist | None:
     return ClouderPlaylist(
         name=clouder_playlist["playlist_name"],
         id=clouder_playlist["playlist_id"],
+        count=0,
         is_base_pl=is_base_pl,
         clouder_week=clouder_week,
         clouder_pl_type=clouder_playlist["clouder_pl_type"],

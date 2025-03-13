@@ -146,7 +146,7 @@ class SpotifyController:
     def handle_cat_menu(self, key: str, amplified: bool = False) -> None:
         pl_name, pl_id = self.state.cat_menu[key]
         self.service.add_if_not_exists(pl_id, self.state.id)
-        status_msg = f"Move to {pl_name.capitalize()}"
+        status_msg = f"'{self.state.name}' Moved to {pl_name.capitalize()}"
         if self.state.playlist and not self.state.playlist.is_base_pl:
             self.service.remove_from_playlist(self.state.playlist.id, self.state.id)
         if amplified:
@@ -159,14 +159,14 @@ class SpotifyController:
         self.status_message = status_msg
 
     def handle_like_track(self) -> None:
-        msg = "Like track"
+        msg = f"'{self.state.name}' Like track"
         if self.state and self.state.id:
             clouder_pl = self.state.playlist
             if clouder_pl and not clouder_pl.is_base_pl:
                 cat_name = clouder_pl.clouder_pl_name
                 prep_pl_id = clouder_pl.prep_playlists[cat_name]
                 self.service.add_if_not_exists(prep_pl_id, self.state.id)
-                msg = "Like track (amplified)"
+                msg = f"'{self.state.name}' Like track (amplified)"
             else:
                 self.service.like_track(self.state.id)
         self.status_message = msg

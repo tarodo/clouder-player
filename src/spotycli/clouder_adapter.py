@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from src.spotycli.mongo_adapter import get_data
-from src.spotycli.sp_adapter import get_sp_artist
+from src.spotycli.sp_adapter import get_sp_artist, get_sp_playlist_tracks
 from src.spotycli.tech_playlists import prep_playlists
 
 logger = logging.getLogger("clouder")
@@ -22,6 +22,7 @@ class ClouderPlaylist:
     name: str
     id: str
     count: int
+    tracks_uris: list[str]
     is_base_pl: bool
     clouder_week: str
     clouder_pl_type: str
@@ -101,11 +102,14 @@ def get_playlist(playlist_uri: str) -> ClouderPlaylist | None:
     clouder_week = clouder_playlist["clouder_week"]
     base_pl, cat_pl = get_playlists(clouder_week)
 
+    tracks_uris = get_sp_playlist_tracks(clouder_playlist["playlist_id"])
+
     is_base_pl = clouder_playlist["playlist_id"] in base_pl.values()
     return ClouderPlaylist(
         name=clouder_playlist["playlist_name"],
         id=clouder_playlist["playlist_id"],
         count=0,
+        tracks_uris=tracks_uris,
         is_base_pl=is_base_pl,
         clouder_week=clouder_week,
         clouder_pl_type=clouder_playlist["clouder_pl_type"],

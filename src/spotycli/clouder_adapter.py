@@ -8,6 +8,7 @@ from src.spotycli.tech_playlists import prep_playlists
 
 logger = logging.getLogger("clouder")
 
+PREP_NAME = "prep"
 
 @dataclass
 class Artist:
@@ -124,6 +125,18 @@ def get_track_points(duration: int, points_cnt: int = 5) -> list[int]:
     return [int(duration * i / points_cnt) for i in range(points_cnt)]
 
 
+@lru_cache
+def get_prep_playlists(style: str) -> dict[str, str]:
+    playlists = get_data("sp_playlists", {"style": style, "clouder_pl_type": PREP_NAME})
+    if playlists:
+        prep_playlists = {
+            playlist["clouder_pl_name"]: playlist["playlist_id"]
+            for playlist in playlists
+        }
+        return prep_playlists
+    return {}
+
+
 def get_current_state(sp_track) -> PlayerState:
     artists_ids = [artist["id"] for artist in sp_track["item"]["artists"]]
     artists = [get_artist(artist_id) for artist_id in artists_ids]
@@ -148,7 +161,8 @@ def get_current_state(sp_track) -> PlayerState:
             name[0]: (name, pl_id) for name, pl_id in cur_playlist.cat_playlists.items()
         }
         clouder_info = get_clouder_week_info(cur_playlist.clouder_week)
-        prep_pl = prep_playlists[clouder_info["style"]]
+        # prep_pl = prep_playlists[clouder_info["style"]]
+        prep_pl = get_prep_playlists(clouder_info["style"])
         cur_playlist.prep_playlists = prep_pl
 
     def cast_ms_to_str(ms: int):

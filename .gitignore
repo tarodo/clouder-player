@@ -9,5 +9,4 @@ __pycache__/
 *.log
 
 examples/
-tech_playlists.py
 test.py

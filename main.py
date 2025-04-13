@@ -245,6 +245,11 @@ class SpotifyUI:
             [("pack", urwid.Text("Artists: ")), self.artists_text]
         )
 
+        self.album_text = urwid.Text("Current album will be displayed here")
+        album_block = urwid.Columns(
+            [("pack", urwid.Text("Album: ")), self.album_text]
+        )
+
         self.track_text = urwid.Text("Current track will be displayed here")
         track_block = urwid.Columns([("pack", urwid.Text("Track: ")), self.track_text])
 
@@ -277,6 +282,7 @@ class SpotifyUI:
                 playlist_block,
                 release_date_block,
                 artists_block,
+                album_block,
                 track_block,
                 urwid.Divider(),
                 menu_block,
@@ -292,6 +298,7 @@ class SpotifyUI:
         if state:
             self.release_date_text.set_text(state.release_date or "No date")
             self.artists_text.set_text(state.artists_repr or "No artists")
+            self.album_text.set_text(state.album_repr or "No album")
             self.track_text.set_text(state.track_repr or "No track")
             pl_text = "No playlist"
             pl_count = 0
@@ -307,6 +314,7 @@ class SpotifyUI:
             self.release_date_text.set_text("No date")
             self.playlist_text.set_text("No playlist")
             self.artists_text.set_text("No artists")
+            self.album_text.set_text("No album")
             self.track_text.set_text("No track")
             self.menu_text.set_text("")
 

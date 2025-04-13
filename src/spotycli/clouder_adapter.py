@@ -42,6 +42,7 @@ class PlayerState:
     release_date: str
     artists: list[Artist]
     artists_repr: str
+    album_repr: str
     popularity: int
     track_points: list[int]
     clouder_info: dict[str, str]
@@ -129,6 +130,7 @@ def get_current_state(sp_track) -> PlayerState:
     artists_repr = " | ".join(
         [f"{art.name} ({art.followers}:{art.popularity})" for art in artists]
     )
+    album_repr = f"{sp_track['item']['album']['name']} ({sp_track['item']['album']['album_type']})"
     track_points = get_track_points(sp_track["item"]["duration_ms"])
     track_repr = f"{sp_track['item']['name']} ({sp_track['item']['popularity']})"
 
@@ -167,6 +169,7 @@ def get_current_state(sp_track) -> PlayerState:
         release_date=sp_track["item"]["album"]["release_date"],
         artists=artists,
         artists_repr=artists_repr,
+        album_repr=album_repr,
         popularity=sp_track["item"]["popularity"],
         track_points=track_points,
         clouder_info=clouder_info,

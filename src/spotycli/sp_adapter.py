@@ -52,3 +52,8 @@ def get_sp_playlist_tracks_full(playlist_id: str, limit: int = 100):
         offset += limit
     return track_uris
 
+
+def get_sp_playlist_info(playlist_id: str):
+    sp = create_sp()
+    playlist_info = sp.playlist(playlist_id)
+    return playlist_info

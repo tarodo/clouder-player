@@ -5,7 +5,10 @@ if __name__ == "__main__":
 
     load_dotenv()
     with open("examples/playlist.txt", "w") as f:
-        pl_info = get_sp_playlist_tracks_full("https://open.spotify.com/playlist/0TyzgwEmwr5EIfJNu0iA55?si=d6bcb9b3b320477d")
+        all_tracks = []
+        pl_info = get_sp_playlist_tracks_full("")
         for track in pl_info:
             f.write(f"{track}\n")
+            all_tracks.append(f"'{track}'")
 
+        print(f"[{','.join(all_tracks)}]")

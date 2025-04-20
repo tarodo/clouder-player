@@ -102,9 +102,6 @@ class SpotifyController:
             update_ui_callback()
             return
 
-        # if self.state and self.state.id == current_playback["item"]["id"]:
-        #     return
-
         self.state = get_current_state(current_playback)
         update_ui_callback()
 

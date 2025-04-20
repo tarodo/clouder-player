@@ -4,7 +4,6 @@ from functools import lru_cache
 
 from src.spotycli.mongo_adapter import get_data
 from src.spotycli.sp_adapter import get_sp_artist, get_sp_playlist_tracks
-from src.spotycli.tech_playlists import prep_playlists
 
 logger = logging.getLogger("clouder")
 
@@ -143,7 +142,10 @@ def get_current_state(sp_track) -> PlayerState:
     artists_repr = " | ".join(
         [f"{art.name} ({art.followers}:{art.popularity})" for art in artists]
     )
-    album_repr = f"{sp_track['item']['album']['name']} ({sp_track['item']['album']['album_type']})"
+    album_repr = (
+        f"{sp_track['item']['album']['name']} "
+        f"({sp_track['item']['album']['album_type']})"
+    )
     track_points = get_track_points(sp_track["item"]["duration_ms"])
     track_repr = f"{sp_track['item']['name']} ({sp_track['item']['popularity']})"
 
@@ -161,7 +163,6 @@ def get_current_state(sp_track) -> PlayerState:
             name[0]: (name, pl_id) for name, pl_id in cur_playlist.cat_playlists.items()
         }
         clouder_info = get_clouder_week_info(cur_playlist.clouder_week)
-        # prep_pl = prep_playlists[clouder_info["style"]]
         prep_pl = get_prep_playlists(clouder_info["style"])
         cur_playlist.prep_playlists = prep_pl
 

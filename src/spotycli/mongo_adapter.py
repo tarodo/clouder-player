@@ -1,6 +1,6 @@
 import logging
 
-from pymongo import MongoClient
+from pymongo import MongoClient, UpdateOne, errors
 from pymongo.synchronous.database import Database
 
 from src.spotycli.config import settings
@@ -50,6 +50,42 @@ def get_data(
             )
         )
         return result
+    finally:
+        if close_connection:
+            db.client.close()
+
+
+def save_data_mongo(
+    data, collection_name: str, key_fields: list = None, db: MongoClient = None
+) -> tuple[int, int]:
+    """Save data to MongoDB in collection"""
+    logger.info(f"Save data : {collection_name} : count = {len(data)} :: Start")
+    close_connection = False
+    if db is None:
+        db = get_mongo_conn()
+        close_connection = True
+    if not key_fields:
+        key_fields = [
+            "id",
+        ]
+
+    operations = []
+    for item in data:
+        item_keys = {field: item[field] for field in key_fields}
+        operations.append(UpdateOne(item_keys, {"$set": item}, upsert=True))
+
+    if not operations:
+        logger.info(f"Save data : {collection_name} : count = 0 :: Done")
+        return 0, 0
+    try:
+        result = db[collection_name].bulk_write(operations)
+        inserted = result.upserted_count
+        updated = result.matched_count
+        logger.info(f"Save data : {collection_name} : {inserted=} : {updated=} :: Done")
+        return inserted, updated
+    except errors.PyMongoError as e:
+        logger.error(f"MongoDB error while saving to {collection_name}: {e}")
+        return 0, 0
     finally:
         if close_connection:
             db.client.close()

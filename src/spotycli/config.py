@@ -11,6 +11,7 @@ class AppSettings(BaseSettings):
     spotipy_redirect_uri: str
     yt_client_id: str
     yt_client_secret: str
+    perplexity_api_key: str
 
     class Config:
         env_file = ".env"

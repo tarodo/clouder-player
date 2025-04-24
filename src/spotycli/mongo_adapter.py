@@ -1,6 +1,6 @@
 import logging
 
-from pymongo import MongoClient, UpdateOne, errors
+from pymongo import InsertOne, MongoClient, UpdateOne, errors
 from pymongo.synchronous.database import Database
 
 from src.spotycli.config import settings
@@ -30,6 +30,7 @@ def get_data(
     collection: str,
     query_filters: dict = None,
     query_fields: list = None,
+    query_sort: list = None,
     db: MongoClient = None,
 ) -> list:
     """Get data from MongoDB"""
@@ -43,13 +44,10 @@ def get_data(
     fields = {"_id": 0}
     fields.update({field: 1 for field in query_fields}) if query_fields else fields
     try:
-        result = list(
-            db[collection].find(
-                filters,
-                fields,
-            )
-        )
-        return result
+        cursor = db[collection].find(filters, fields)
+        if query_sort:
+            cursor = cursor.sort(query_sort)
+        return list(cursor)
     finally:
         if close_connection:
             db.client.close()
@@ -64,15 +62,14 @@ def save_data_mongo(
     if db is None:
         db = get_mongo_conn()
         close_connection = True
-    if not key_fields:
-        key_fields = [
-            "id",
-        ]
 
     operations = []
     for item in data:
-        item_keys = {field: item[field] for field in key_fields}
-        operations.append(UpdateOne(item_keys, {"$set": item}, upsert=True))
+        if key_fields:
+            item_keys = {field: item[field] for field in key_fields}
+            operations.append(UpdateOne(item_keys, {"$set": item}, upsert=True))
+        else:
+            operations.append(InsertOne(item))
 
     if not operations:
         logger.info(f"Save data : {collection_name} : count = 0 :: Done")

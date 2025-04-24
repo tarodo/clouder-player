@@ -57,10 +57,12 @@ def search_am_release(release: Release):
 def search_yt_release(release: Release) -> str:
     ytmusic = YTMusic("oauth.json", oauth_credentials=OAuthCredentials(client_id=settings.yt_client_id, client_secret=settings.yt_client_secret))
     yt_playlist = ytmusic.create_playlist(release.name, release.description)
+    print(f"Created playlist: {yt_playlist}")
     for track in release.tracks:
         yt_tracks = ytmusic.search(f"{', '.join(track[0])} - {track[1]}", "songs")
         if yt_tracks:
             yt_track = yt_tracks[0]
+            print(yt_track)
             ytmusic.add_playlist_items(yt_playlist, [yt_track["videoId"]])
     return yt_playlist
 
@@ -68,4 +70,5 @@ def search_yt_release(release: Release) -> str:
 if __name__ == "__main__":
     sp_url = input("Enter Spotify release URL: ")
     release = create_release_search_data(sp_url)
+    search_yt_release(release)
     search_am_release(release)

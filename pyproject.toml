@@ -10,6 +10,8 @@ dependencies = [
     "spotipy~=2.25.0",
     "pydantic_settings~=2.7.1",
     "ytmusicapi>=1.10.3",
+    "anthropic>=0.50.0",
+    "openai>=1.76.0",
 ]
 
 [project.optional-dependencies]

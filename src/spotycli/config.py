@@ -12,6 +12,7 @@ class AppSettings(BaseSettings):
     yt_client_id: str
     yt_client_secret: str
     perplexity_api_key: str
+    anthropic_api_key: str
 
     class Config:
         env_file = ".env"

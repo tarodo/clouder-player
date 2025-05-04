@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from pprint import pprint
 
 from src.scripts.report_models import get_anthropic_report, get_perplexity_report
 from src.scripts.reg_release import register_release
@@ -197,7 +196,7 @@ def create_tg_post(release: Release, release_report: str) -> str:
         "content": tg_post_content,
         "citations": citations
     }
-    # save_data_mongo([tg_post], "tg_posts")
+    save_data_mongo([tg_post], "tg_posts")
     return tg_post
 
 if __name__ == "__main__":
@@ -210,6 +209,7 @@ if __name__ == "__main__":
     ]
     all_specs = "\n".join([f"{idx}. {spec}" for idx, spec in playlist_specifics])
     user_spec = int(input(f"Enter the user specific details from the following:\n{all_specs}\n"))-1
+
     register_release(sp_playlist_url)
     release = create_release_config(sp_playlist_url)
     create_tracks_reports(release)
@@ -219,4 +219,3 @@ if __name__ == "__main__":
 
     release_report = collect_release_report(release)
     tg_post = create_tg_post(release, release_report)
-    pprint(tg_post)

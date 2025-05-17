@@ -1,9 +1,19 @@
 from dataclasses import dataclass
 import json
+from pydantic import BaseModel, Field
 
-from src.scripts.report_models import get_perplexity_report
+from langchain.output_parsers import PydanticOutputParser
+from langchain.prompts import PromptTemplate
+from langchain_openai import ChatOpenAI
+from src.spotycli.config import settings
+
 from src.spotycli.mongo_adapter import get_data, get_mongo_conn, save_data_mongo
 
+class GenreResponse(BaseModel):
+    sub_genres: list[str] = Field(description="Sub-genres from the list above confirmed from credible sources")
+    predicted_sub_genres: list[str] = Field(description="Sub-genres from the list above based on style, artist history, or label focus")
+    label_sub_genres: list[str] = Field(description="Sub-genres of the label from the list above")
+    other_info: str = Field(description="Brief notes on sound, comparisons, or label tendencies")
 
 @dataclass
 class TrackGenre:
@@ -92,54 +102,62 @@ def collect_tracks(playlist_id: str) -> list[TrackGenre]:
 
 def collect_genres(track: TrackGenre):
     print(f"collecting genres for {track.name} by {track.artists}")
+    
+    parser = PydanticOutputParser(pydantic_object=GenreResponse)
+    
     system_prompt = """
     You're an electronic music expert specializing in Drum and Bass.
+    You must respond in valid JSON format according to the schema.
     """
 
-    prompt = """
-    Determine sub-genres of Drum and Bass for:
-        - Artist(s): {artists}
-        - Title: {name}
-        - Label: {label}
-        - BPM: {bpm}
-        - Key: {music_key}
+    prompt = PromptTemplate(
+        template="""
+        Determine sub-genres of Drum and Bass for:
+            - Artist(s): {artists}
+            - Title: {name}
+            - Label: {label}
+            - BPM: {bpm}
+            - Key: {music_key}
 
-    Search the label's official page, Reddit, YouTube comments, and other available sources.
-    If no official sub-genre is mentioned, check the artists' previous releases and the label's typical genre focus.
-    Sub-genres list:
-        'ambient', 'atmospheric', 'breakcore', 'breakbeat',
-        'chillout', 'dark', 'darkcore', 'darkstep', 
-        'deep', 'downtempo', 'downbeat', 'dub', 'dubstep', 
-        'half-time', 'intelligent', 'jazzstep', 'jump up', 'jungle', 
-        'liquid', 'minimal', 'neurofunk', 
-        'rollers', 'soulful', 'techstep'
-    Return JSON only:
-    {{
-        "sub-genres": ["sub-genres from the list above confirmed from credible sources"],
-        "predicted sub-genres": ["sub-genres from the list above based on style, artist history, or label focus"],
-        "label sub-genres": ["sub-genres of the label from the list above"],
-        "other info": "brief notes on sound, comparisons, or label tendencies"
-    }}
-    Rules:
-	- Only add to sub-genres if explicitly confirmed.
-	- Use predicted sub-genres for reasonable assumptions.
-	- Keep other info concise but informative.
+        Search the label's official page, Reddit, YouTube comments, and other available sources.
+        If no official sub-genre is mentioned, check the artists' previous releases and the label's typical genre focus.
+        Sub-genres list:
+            'ambient', 'atmospheric', 'breakcore', 'breakbeat',
+            'chillout', 'dark', 'darkcore', 'darkstep', 
+            'deep', 'downtempo', 'downbeat', 'dub', 'dubstep', 
+            'half-time', 'intelligent', 'jazzstep', 'jump up', 'jungle', 
+            'liquid', 'minimal', 'neurofunk', 
+            'rollers', 'soulful', 'techstep'
 
-    """
-    track_prompt = prompt.format(
-        artists=', '.join(track.artists),
-        name=track.name,
-        label=track.label,
-        bpm=track.bpm,
-        music_key=track.key
+        {format_instructions}
+
+        Rules:
+        - Only add to sub-genres if explicitly confirmed.
+        - Use predicted sub-genres for reasonable assumptions.
+        - Keep other info concise but informative.
+        """,
+        input_variables=["artists", "name", "label", "bpm", "music_key"],
+        partial_variables={"format_instructions": parser.get_format_instructions()}
     )
 
-    # result = get_perplexity_report(system_prompt, track_prompt, "sonar-pro")
-    # print(result)
-    # print("=============")
-    genres, _ = get_perplexity_report(system_prompt, track_prompt, "sonar")
-    return genres
+    llm = ChatOpenAI(
+        model="sonar",
+        temperature=0,
+        api_key=settings.perplexity_api_key,
+        base_url="https://api.perplexity.ai"
+    )
 
+    chain = prompt | llm | parser
+
+    result = chain.invoke({
+        "artists": ', '.join(track.artists),
+        "name": track.name,
+        "label": track.label,
+        "bpm": track.bpm,
+        "music_key": track.key
+    })
+
+    return json.dumps(result.model_dump())
 
 def get_genres(track_genre_txt: str) -> list[str]:
     import re
@@ -196,12 +214,14 @@ def collect_all_genres():
 
 if __name__ == "__main__":
     playlists_to_collect = {
+        "1Zzq0nvsgmajI6ymFvLnfb": "melodic",
     }
     for playlist_id, clouder_genre in playlists_to_collect.items():
         tracks = collect_tracks(playlist_id)
-        for track in tracks:
+        for track in tracks[:1]:
             track_genre_txt = collect_genres(track)
-            track_genres = get_genres(track_genre_txt)
-            save_track_genre(track, track_genre_txt, track_genres, clouder_genre)
+            print(track_genre_txt)
+    #         track_genres = get_genres(track_genre_txt)
+    #         save_track_genre(track, track_genre_txt, track_genres, clouder_genre)
     
-    collect_all_genres()
+    # collect_all_genres()

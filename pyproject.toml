@@ -12,6 +12,9 @@ dependencies = [
     "ytmusicapi>=1.10.3",
     "anthropic>=0.50.0",
     "openai>=1.76.0",
+    "langchain>=0.3.25",
+    "langchain-openai>=0.3.16",
+    "perplexity-ai>=0.1.0",
 ]
 
 [project.optional-dependencies]

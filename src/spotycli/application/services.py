@@ -44,9 +44,12 @@ class PlayerDataService:
     @lru_cache
     def get_clouder_week_metadata(self, clouder_week: str):
         fields = ["style_id", "style", "week", "year", "week_start", "week_end"]
-        return self.mongo_adapter.get_data(
+        results = self.mongo_adapter.get_data(
             "clouder_weeks", {"id": clouder_week}, fields
-        )[0]
+        )
+        if results:
+            return results[0]
+        return None
 
     @lru_cache
     def get_artist_details(self, artist_id: str) -> Artist:
@@ -70,7 +73,7 @@ class PlayerDataService:
         clouder_week = clouder_playlist_data["clouder_week"]
         base_pl, cat_pl = self.get_clouder_playlists_for_week(clouder_week)
 
-        tracks_uris = self.spotify_adapter.get_sp_playlist_tracks(
+        tracks_uris = self.spotify_adapter.get_playlist_tracks(
             clouder_playlist_data["playlist_id"]
         )
 
@@ -134,18 +137,21 @@ class PlayerDataService:
                 for name, pl_id in cur_playlist.cat_playlists.items()
             }
             clouder_info = self.get_clouder_week_metadata(cur_playlist.clouder_week)
-            prep_pl = self.get_style_prep_playlists(clouder_info["style"])
-            cur_playlist.prep_playlists = prep_pl
+            if clouder_info and "style" in clouder_info:
+                prep_pl = self.get_style_prep_playlists(clouder_info["style"])
+                cur_playlist.prep_playlists = prep_pl
 
-        def cast_ms_to_str(ms: int):
+        def _cast_ms_to_str(ms: int) -> str:
             minutes = str(ms // 1000 // 60).zfill(2)
             seconds = str(ms // 1000 % 60).zfill(2)
             return f"{minutes}:{seconds}"
 
         duration_ms = sp_track_data["item"]["duration_ms"]
         progress_ms = sp_track_data["progress_ms"]
-        progress_repr = f"{cast_ms_to_str(progress_ms)}/{cast_ms_to_str(duration_ms)}"
-        progress_percent = int(progress_ms / duration_ms * 100)
+        progress_repr = f"{_cast_ms_to_str(progress_ms)}/{_cast_ms_to_str(duration_ms)}"
+        progress_percent = (
+            int(progress_ms / duration_ms * 100) if duration_ms > 0 else 0
+        )
 
         return PlayerState(
             name=sp_track_data["item"]["name"],
@@ -175,7 +181,9 @@ class PlayerApplicationService:
         current_playback_data = self.spotify_adapter.current_playback()
         if not current_playback_data:
             return None
-        state = self.player_data_service.get_current_player_state_details(current_playback_data)
+        state = self.player_data_service.get_current_player_state_details(
+            current_playback_data
+        )
         self.update_playlist_count_in_state(state)
         return state
 

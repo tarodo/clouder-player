@@ -20,3 +20,8 @@ oauth.json
 *.pywz
 *.pyzw
 *.egg-info
+
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.vscode/

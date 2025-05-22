@@ -64,7 +64,12 @@ class SpotifyAdapter:
 
     def add_if_not_exists(self, playlist_id: str, track_id: str) -> None:
         playlist_tracks = self.sp.playlist_items(playlist_id)
-        if track_id not in [item["track"]["id"] for item in playlist_tracks["items"] if item and item.get("track")]:
+        playlist_track_ids = [
+            item["track"]["id"]
+            for item in playlist_tracks["items"]
+            if item and item.get("track") and item["track"].get("id")
+        ]
+        if track_id not in playlist_track_ids:
             self.add_to_playlist(playlist_id, track_id)
 
     def remove_from_playlist(self, playlist_id: str, track_id: str) -> None:
@@ -79,17 +84,23 @@ class SpotifyAdapter:
     def get_sp_artist(self, artist_id: str):
         return self.sp.artist(artist_id)
 
-    def get_sp_playlist_tracks(self, playlist_id: str, limit: int = 100) -> list[str]:
+    def get_playlist_tracks(self, playlist_id: str, limit: int = 100) -> list[str]:
         track_uris = []
         offset = 0
         while True:
-            playlist_data = self.sp.playlist_items(playlist_id, offset=offset, limit=limit)
-            tracks = playlist_data['items']
+            playlist_data = self.sp.playlist_items(
+                playlist_id, offset=offset, limit=limit
+            )
+            tracks = playlist_data["items"]
             if not tracks:
                 break
             for track_item in tracks:
-                if track_item and track_item.get('track') and track_item['track'].get('id'):
-                    track_uris.append(track_item['track']['id'])
+                if (
+                    track_item
+                    and track_item.get("track")
+                    and track_item["track"].get("id")
+                ):
+                    track_uris.append(track_item["track"]["id"])
             offset += limit
         return track_uris
 

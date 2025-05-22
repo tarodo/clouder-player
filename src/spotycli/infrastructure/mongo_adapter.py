@@ -45,13 +45,16 @@ class MongoAdapter:
         query_sort: list = None,
     ) -> list:
         """Get data from MongoDB"""
-        logger.info(f"Get data : {collection} with filters : {query_filters} :: Start")
+        logger.info(
+            f"Get data : {collection} with filters : {query_filters} :: Start"
+        )
         db = self._get_db()
-        filters = {}
-        filters.update(query_filters) if query_filters else filters
-        fields = {"_id": 0}
-        fields.update({field: 1 for field in query_fields}) if query_fields else fields
-        cursor = db[collection].find(filters, fields)
+        processed_filters = query_filters if query_filters is not None else {}
+        projection = {"_id": 0}
+        if query_fields:
+            projection.update({field: 1 for field in query_fields})
+
+        cursor = db[collection].find(processed_filters, projection)
         if query_sort:
             cursor = cursor.sort(query_sort)
         return list(cursor)

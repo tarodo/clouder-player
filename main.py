@@ -13,7 +13,8 @@ logger = logging.getLogger("main")
 
 
 def main() -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     # Initialize adapters
     mongo_adapter = MongoAdapter(settings)
@@ -24,7 +25,7 @@ def main() -> None:
     player_app_service = PlayerApplicationService(spotify_adapter, player_data_service)
 
     # Initialize presentation layer
-    cli_controller = CliController(player_app_service, player_data_service)
+    cli_controller = CliController(player_app_service)
     ui = SpotifyUI(loop, cli_controller)
 
     asyncio.ensure_future(cli_controller.update_state_loop(ui.update_ui))

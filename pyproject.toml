@@ -7,13 +7,8 @@ requires-python = ">=3.13"
 dependencies = [
     "urwid~=2.6.16",
     "pymongo~=4.11",
-    "spotipy~=2.25.0",
+    "spotipy~=2.25.0", # Ensure this is the correct version for your needs
     "pydantic_settings~=2.7.1",
-    "ytmusicapi>=1.10.3",
-    "anthropic>=0.50.0",
-    "openai>=1.76.0",
-    "langchain>=0.3.25",
-    "langchain-openai>=0.3.16",
 ]
 
 [project.optional-dependencies]

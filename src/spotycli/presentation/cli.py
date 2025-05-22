@@ -5,7 +5,7 @@ from enum import StrEnum
 
 import urwid
 
-from src.spotycli.application.services import PlayerApplicationService, PlayerDataService
+from src.spotycli.application.services import PlayerApplicationService
 from src.spotycli.domain.models import PlayerState
 from src.spotycli.infrastructure.spotify_adapter import SpotifyAdapter
 
@@ -22,10 +22,9 @@ class PlayerCommand(StrEnum):
 
 
 class CliController:
-    def __init__(self, app_service: PlayerApplicationService, data_service: PlayerDataService) -> None:
+    def __init__(self, app_service: PlayerApplicationService) -> None:
         self.app_service = app_service
-        self.data_service = data_service # For direct data access if needed by UI, e.g. track points
-        self.spotify_adapter = app_service.spotify_adapter # Direct access for some UI actions
+        self.spotify_adapter = app_service.spotify_adapter
         self.state: PlayerState | None = None
         self.status_message: str = ""
 
@@ -71,21 +70,27 @@ class CliController:
         new_position = self.state.track_points[point - 1]
         self.spotify_adapter.seek_track(new_position)
 
-    def handle_cat_menu(self, key: str, amplified: bool = False) -> None:
-        if not self.state or not self.state.cat_menu or not self.state.id:
+    def handle_move_track(self, pl_name: str, amplified: bool = False) -> None:
+        if not self.state:
             return
-        pl_name, pl_id = self.state.cat_menu[key]
+        pl_id = self.state.cat_menu[pl_name]
         self.spotify_adapter.add_if_not_exists(pl_id, self.state.id)
         status_msg = f"'{self.state.name}' Moved to {pl_name.capitalize()}"
         if self.state.playlist and not self.state.playlist.is_base_pl:
-            self.spotify_adapter.remove_from_playlist(self.state.playlist.id, self.state.id)
+            self.spotify_adapter.remove_from_playlist(
+                self.state.playlist.id, self.state.id
+            )
         if amplified:
             clouder_pl = self.state.playlist
-            if clouder_pl and clouder_pl.prep_playlists and pl_name in clouder_pl.prep_playlists:
+            if (
+                clouder_pl
+                and clouder_pl.prep_playlists
+                and pl_name in clouder_pl.prep_playlists
+            ):
                 prep_pl_id = clouder_pl.prep_playlists[pl_name]
                 self.spotify_adapter.add_if_not_exists(prep_pl_id, self.state.id)
                 status_msg += " (amplified)"
-        self.handle_next_track() # This also updates playlist count via app_service
+        self.handle_next_track()  # This also updates playlist count via app_service
         self.status_message = status_msg
 
     def handle_like_track(self) -> None:
@@ -139,27 +144,14 @@ class CliController:
 
 
 class SpotifyUI:
-    def __init__(
-        self, loop: asyncio.AbstractEventLoop, controller: CliController
-    ) -> None:
+    def __init__(self, loop: asyncio.AbstractEventLoop, controller: CliController) -> None:
         self.controller = controller
-        self.loop = loop
-        self._build_interface()
-        self.main_loop = urwid.MainLoop(
-            self.frame,
-            palette=[
-                ("normal", "default", "default"),
-                ("complete", "default", "dark gray"),
-            ],
-            unhandled_input=self.handle_input,
-            event_loop=urwid.AsyncioEventLoop(loop=loop),
-        )
 
-    def _build_interface(self) -> None:
+        # Initialize UI widgets
         self.playlist_text = urwid.Text("Current playlist will be displayed here")
         self.playlist_count = urwid.Text("(0)", align="left")
         playlist_count_padded = urwid.Padding(self.playlist_count, align="left", left=1)
-        playlist_block = urwid.Columns(
+        self.playlist_block = urwid.Columns(
             [
                 ("pack", urwid.Text("Playlist: ")),
                 ("pack", self.playlist_text),
@@ -177,23 +169,42 @@ class SpotifyUI:
             def __init__(self, normal, complete, current=0, done=100, text=""):
                 super().__init__(normal, complete, current, done)
                 self.custom_text = text
-            def get_text(self): return self.custom_text
-            def set_text(self, new_text): self.custom_text = new_text
+
+            def get_text(self):
+                return self.custom_text
+
+            def set_text(self, new_text):
+                self.custom_text = new_text
 
         self.progress = CustomProgressBar("normal", "complete", text="0:00/0:00")
-        self.main_layout = urwid.Pile([
-            playlist_block,
-            urwid.Columns([("pack", urwid.Text("Release Date: ")), self.release_date_text]),
-            urwid.Columns([("pack", urwid.Text("Artists: ")), self.artists_text]),
-            urwid.Columns([("pack", urwid.Text("Album: ")), self.album_text]),
-            urwid.Columns([("pack", urwid.Text("Track: ")), self.track_text]),
-            urwid.Divider(),
-            urwid.Columns([("pack", urwid.Text("Menu: ")), self.menu_text]),
-            urwid.Columns([("pack", urwid.Text("Status: ")), self.status_text]),
-            urwid.Divider(),
-            urwid.Columns([("fixed", 50, self.progress)]),
-        ])
+        self.main_layout = urwid.Pile(
+            [
+                self.playlist_block,
+                urwid.Columns(
+                    [("pack", urwid.Text("Release Date: ")), self.release_date_text]
+                ),
+                urwid.Columns([("pack", urwid.Text("Artists: ")), self.artists_text]),
+                urwid.Columns([("pack", urwid.Text("Album: ")), self.album_text]),
+                urwid.Columns([("pack", urwid.Text("Track: ")), self.track_text]),
+                urwid.Divider(),
+                urwid.Columns([("pack", urwid.Text("Menu: ")), self.menu_text]),
+                urwid.Columns([("pack", urwid.Text("Status: ")), self.status_text]),
+                urwid.Divider(),
+                urwid.Columns([("fixed", 50, self.progress)]),
+            ]
+        )
         self.frame = urwid.Frame(body=urwid.SolidFill(" "), footer=self.main_layout)
+        
+        # Create urwid MainLoop with asyncio event loop
+        self.main_loop = urwid.MainLoop(
+            self.frame,
+            palette=[
+                ("normal", "default", "default"),
+                ("complete", "default", "dark gray"),
+            ],
+            unhandled_input=self.handle_input,
+            event_loop=urwid.AsyncioEventLoop(loop=loop),
+        )
 
     def update_ui(self) -> None:
         state = self.controller.state
@@ -222,24 +233,27 @@ class SpotifyUI:
         self.main_loop.draw_screen()
 
     def handle_input(self, key: str) -> None:
-        if not self.controller.state: # No state, no actions
-            if key == 'q': raise urwid.ExitMainLoop()
+        if key == "q":
+            raise urwid.ExitMainLoop()
+
+        if not self.controller.state:  # No state, no further actions
             return
 
         base_options = {cmd.value for cmd in PlayerCommand}
-        points_options = [str(i) for i in range(1, len(self.controller.state.track_points) + 1)]
+        points_options = []
+        if self.controller.state.track_points:
+            points_options = [
+                str(i) for i in range(1, len(self.controller.state.track_points) + 1)
+            ]
 
         if key in base_options:
             self.controller.handle_base_menu(PlayerCommand(key))
         elif key in points_options:
             self.controller.handle_points_menu(int(key))
-        elif self.controller.state.cat_menu and isinstance(key, str):
-            if key in self.controller.state.cat_menu:
-                self.controller.handle_cat_menu(key)
-            elif key.lower() in self.controller.state.cat_menu:
-                self.controller.handle_cat_menu(key.lower(), amplified=True)
-        elif key == 'q':
-            raise urwid.ExitMainLoop()
+        elif key in self.controller.state.cat_menu:
+            self.controller.handle_cat_menu(key)
+        elif isinstance(key, str) and key.lower() in self.controller.state.cat_menu:
+            self.controller.handle_cat_menu(key.lower(), amplified=True)
         self.update_ui()
 
     def run(self) -> None:

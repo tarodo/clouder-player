@@ -57,7 +57,7 @@ def setup_logging():
                     "level": log_level,
                     "propagate": False,
                 },
-                "clouder": {
+                "application": {
                     "handlers": ["logger_file"],
                     "level": log_level,
                     "propagate": False,

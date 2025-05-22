@@ -25,4 +25,4 @@ def register_week_playlists(week: str):
 
 
 if __name__ == "__main__":
-    register_week_playlists("DNB_2025_6")
+    register_week_playlists("DNB_2025_7")

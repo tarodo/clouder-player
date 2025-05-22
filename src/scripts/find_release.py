@@ -71,4 +71,4 @@ if __name__ == "__main__":
     sp_url = input("Enter Spotify release URL: ")
     release = create_release_search_data(sp_url)
     search_yt_release(release)
-    search_am_release(release)
+    # search_am_release(release)
